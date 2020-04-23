@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+def Jenkins_build_num = JENKINS_BUILD_NUMBER.toInteger()
 
 android {
     compileSdkVersion 29
@@ -8,14 +9,50 @@ android {
         minSdkVersion 15
         //noinspection ExpiredTargetSdkVersion
         targetSdkVersion 22
-        versionCode 1
-        versionName "1.0"
+        versionCode Jenkins_build_num
+        versionName APP_VERSION
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+
+    signingConfigs {
+        config {
+            keyAlias APP_KEY_ALIAS
+            keyPassword APP_KEY_PASSWORD
+            storeFile file(APP_STORE_FILE_DIR)
+            storePassword APP_STORE_PASSWORD
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
+            /*apk重命名*/
+            android.applicationVariants.all { variant ->
+                variant.outputs.all {
+                    if ("true".equals(IS_JENKINS)) {
+                        outputFileName = "JenkinsTest-${variant.name}-v${APP_VERSION}#${JENKINS_BUILD_NUMBER}-${JENKINS_TIME}.apk"
+                    } else {
+                        outputFileName = "JenkinsTest-${variant.name}-v${APP_VERSION}#${variant.versionCode}-${releaseTime()}.apk"
+                    }
+
+                }
+            }
+        }
+        debug {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            /*apk重命名*/
+            android.applicationVariants.all { variant ->
+                variant.outputs.all {
+                    if ("true".equals(IS_JENKINS)) {
+                        outputFileName = "JenkinsTest-${variant.name}-v${APP_VERSION}#${JENKINS_BUILD_NUMBER}-${JENKINS_TIME}.apk"
+                    } else {
+                        outputFileName = "JenkinsTest-${variant.name}-v${APP_VERSION}#${variant.versionCode}-${releaseTime()}.apk"
+                    }
+                }
+            }
         }
     }
 
@@ -28,6 +65,11 @@ android {
         }
     }
 
+}
+
+// 定义一个打包时间
+def releaseTime() {
+    return new Date().format("yyyyMMdd", TimeZone.getTimeZone("UTC"))
 }
 
 dependencies {
